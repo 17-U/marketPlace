@@ -115,6 +115,72 @@ Ouvrir `https://www.votredomaine.com` dans un navigateur et tester le parcours d
 (le code OTP apparaît dans `docker compose -f docker-compose.prod.yml logs api` tant qu'aucun
 fournisseur SMS réel n'est branché).
 
+### 6bis. Variante : VPS mutualisé, Nginx déjà présent sur l'hôte
+
+Si le VPS héberge déjà d'autres projets avec son propre Nginx natif (+ Certbot) occupant les
+ports 80/443, le conteneur `nginx` embarqué dans `docker-compose.prod.yml` entre en conflit.
+Utiliser `docker-compose.prod.override.yml` à la place :
+
+```bash
+docker compose -f docker-compose.prod.yml -f docker-compose.prod.override.yml build
+docker compose -f docker-compose.prod.yml -f docker-compose.prod.override.yml up -d
+```
+
+Cet override désactive le conteneur `nginx` (profil `bundled-nginx`, jamais démarré par
+défaut) et publie l'API/le Web uniquement sur `127.0.0.1:4010`/`127.0.0.1:4011` — jamais
+exposés publiquement par Docker. C'est le Nginx de l'hôte qui fait le reverse-proxy, comme
+pour les autres projets déjà en place. Ajouter un fichier dans
+`/etc/nginx/sites-available/` (puis le lier dans `sites-enabled/`) :
+
+```nginx
+server {
+    listen 80;
+    server_name marketplace-web.VOTRE-IP.sslip.io;
+
+    location / {
+        proxy_pass http://127.0.0.1:4011;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name marketplace-api.VOTRE-IP.sslip.io;
+
+    location / {
+        proxy_pass http://127.0.0.1:4010;
+        proxy_http_version 1.1;
+        # Upgrade/Connection: indispensable pour Socket.IO (chemin fixe /socket.io/).
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 86400;
+    }
+}
+```
+
+`VOTRE-IP.sslip.io` (ex. `109-199-118-66.sslip.io`) est un DNS public gratuit qui résout
+automatiquement vers l'IP du VPS — permet d'obtenir un certificat Let's Encrypt réel via
+Certbot sans posséder de nom de domaine, utile pour démarrer avant l'achat d'un domaine
+définitif :
+
+```bash
+ln -s /etc/nginx/sites-available/marketplace.conf /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+certbot --nginx -d marketplace-web.VOTRE-IP.sslip.io -d marketplace-api.VOTRE-IP.sslip.io
+```
+
+Une fois un vrai domaine acheté, remplacer `server_name` par le domaine définitif, relancer
+Certbot pour ce nouveau nom, et mettre à jour `WEB_URL`/`API_URL`/`NEXT_PUBLIC_*` dans `.env`
+(puis `docker compose ... up -d` pour appliquer).
+
 ### 7. Sauvegardes
 
 La base de données est le seul état critique non reconstructible (les photos sont sur R2, déjà

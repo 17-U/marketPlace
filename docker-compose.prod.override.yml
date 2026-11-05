@@ -1,0 +1,22 @@
+# Override optionnel pour un déploiement derrière un Nginx déjà présent sur l'hôte
+# (VPS mutualisé avec d'autres projets, cas documenté dans README.md).
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.prod.override.yml build
+#   docker compose -f docker-compose.prod.yml -f docker-compose.prod.override.yml up -d
+#
+# Le conteneur nginx embarqué (profil "bundled-nginx") n'est alors pas démarré: l'API et le
+# Web sont publiés uniquement sur 127.0.0.1 (jamais exposés publiquement par Docker), et c'est
+# le Nginx de l'hôte qui fait le reverse-proxy vers ces deux ports (voir README.md).
+
+services:
+  api:
+    ports:
+      - "127.0.0.1:4010:4000"
+
+  web:
+    ports:
+      - "127.0.0.1:4011:3000"
+
+  nginx:
+    profiles: ["bundled-nginx"]
