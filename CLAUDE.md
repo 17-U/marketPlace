@@ -246,11 +246,9 @@ Mettre à jour cette section (et ce fichier en général) à la fin de chaque ph
   `tsconfig.json` de `packages/shared` l'`extends` depuis la racine du monorepo, et sans ce
   fichier `tsc` échoue avec `TS5083: Cannot read file '/app/tsconfig.base.json'`. Même leçon:
   tout nouveau fichier de config partagé à la racine doit aussi être ajouté aux `COPY` des
-  Dockerfiles (`apps/api/Dockerfile`, `apps/web/Dockerfile`). **Le correctif `.dockerignore` a
-  été confirmé par un vrai `docker build` qui a progressé au-delà de l'étape auparavant en
-  échec ; le correctif `tsconfig.base.json` n'a pas encore pu être revalidé par un build complet
-  réussi (coupure réseau pendant la Phase 7) — lancer `docker compose -f docker-compose.prod.yml
-  build` une fois avant un vrai déploiement pour confirmer.**
+  Dockerfiles (`apps/api/Dockerfile`, `apps/web/Dockerfile`). **Les deux correctifs ont été
+  confirmés par un `docker compose -f docker-compose.prod.yml build` complet et réussi
+  (images `marketplace-prod-api` et `marketplace-prod-web` construites sans erreur).**
 - **Nginx en prod route par sous-domaine, pas par préfixe `/api/`** : Socket.IO utilise un
   chemin fixe (`/socket.io/`) indépendant du préfixe d'URL de connexion, donc un reverse proxy
   qui stripperait un préfixe `/api/` casserait silencieusement le WebSocket en production.
