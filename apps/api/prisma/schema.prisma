@@ -1,0 +1,556 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum VerificationStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  RESERVED
+  SOLD
+  HIDDEN
+}
+
+enum ListingCondition {
+  NEW
+  VERY_GOOD
+  GOOD
+  FAIR
+}
+
+enum MessageType {
+  TEXT
+  OFFER
+  SYSTEM
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum OrderStatus {
+  CREATED
+  PAID_HELD
+  SHIPPED
+  DELIVERED
+  RELEASED
+  CANCELLED
+  DISPUTED
+  REFUNDED
+}
+
+enum DeliveryMethod {
+  HAND_DELIVERY
+  LOCAL_COURIER
+  TRAVEL_AGENCY
+}
+
+enum PaymentProviderName {
+  MOCK
+  MTN_MOMO
+  ORANGE_MONEY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum LedgerEntryType {
+  CAPTURE
+  HOLD
+  COMMISSION
+  PAYOUT
+  REFUND
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_REFUND
+  RESOLVED_RELEASE
+  CLOSED
+}
+
+enum ReportReason {
+  FRAUD
+  COUNTERFEIT
+  INAPPROPRIATE
+  SPAM
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTIONED
+}
+
+enum NotificationType {
+  OTP_CODE
+  NEW_MESSAGE
+  NEW_OFFER
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  ORDER_CREATED
+  ORDER_PAID
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  ORDER_AUTO_RELEASE_SOON
+  ORDER_RELEASED
+  ORDER_CANCELLED
+  DISPUTE_OPENED
+  DISPUTE_RESOLVED
+  REVIEW_RECEIVED
+  SELLER_VERIFICATION_RESULT
+  LISTING_MODERATED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+// ---------- Core: utilisateurs & auth ----------
+
+model User {
+  id              String    @id @default(uuid())
+  phone           String    @unique
+  phoneVerifiedAt DateTime?
+  email           String?   @unique
+  firstName       String
+  lastName        String
+  avatarUrl       String?
+  city            City?     @relation(fields: [cityId], references: [id])
+  cityId          String?
+  role            Role      @default(USER)
+  locale          String    @default("fr")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  sellerVerification SellerVerification?
+
+  listings  Listing[]
+  favorites Favorite[]
+
+  conversationsAsBuyer  Conversation[] @relation("ConversationBuyer")
+  conversationsAsSeller Conversation[] @relation("ConversationSeller")
+  messages              Message[]
+
+  ordersAsBuyer      Order[]              @relation("OrderBuyer")
+  ordersAsSeller     Order[]              @relation("OrderSeller")
+  orderStatusChanges OrderStatusHistory[]
+
+  reviewsGiven    Review[] @relation("ReviewAuthor")
+  reviewsReceived Review[] @relation("ReviewTarget")
+
+  disputesOpened   Dispute[]        @relation("DisputeOpenedBy")
+  disputesResolved Dispute[]        @relation("DisputeResolvedBy")
+  disputeMessages  DisputeMessage[]
+
+  reportsFiled    Report[] @relation("ReportReporter")
+  reportsResolved Report[] @relation("ReportResolvedBy")
+
+  notifications Notification[]
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([role])
+}
+
+model OtpCode {
+  id         String    @id @default(uuid())
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  tokenHash String    @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model SellerVerification {
+  id              String             @id @default(uuid())
+  user            User               @relation(fields: [userId], references: [id])
+  userId          String             @unique
+  idCardPhotoUrl  String
+  selfiePhotoUrl  String
+  status          VerificationStatus @default(PENDING)
+  reviewedById    String?
+  rejectionReason String?
+  reviewedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+// ---------- Référentiels ----------
+
+model City {
+  id       String    @id @default(uuid())
+  nameFr   String
+  nameEn   String
+  region   String
+  users    User[]
+  listings Listing[]
+
+  @@unique([nameFr])
+}
+
+model Category {
+  id       String     @id @default(uuid())
+  slug     String     @unique
+  nameFr   String
+  nameEn   String
+  icon     String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  parentId String?
+  children Category[] @relation("CategoryTree")
+  listings Listing[]
+}
+
+// ---------- Annonces ----------
+
+model Listing {
+  id           String           @id @default(uuid())
+  seller       User             @relation(fields: [sellerId], references: [id])
+  sellerId     String
+  title        String
+  description  String
+  category     Category         @relation(fields: [categoryId], references: [id])
+  categoryId   String
+  brand        String?
+  size         String?
+  condition    ListingCondition
+  priceXaf     Int
+  city         City             @relation(fields: [cityId], references: [id])
+  cityId       String
+  neighborhood String?
+  status       ListingStatus    @default(DRAFT)
+  viewsCount   Int              @default(0)
+  publishedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  deletedAt    DateTime?
+
+  photos        ListingPhoto[]
+  favorites     Favorite[]
+  conversations Conversation[]
+  orders        Order[]
+  reports       Report[]
+
+  @@index([status, categoryId, cityId])
+  @@index([status, priceXaf])
+  @@index([status, createdAt])
+  @@index([sellerId])
+}
+
+model ListingPhoto {
+  id          String   @id @default(uuid())
+  listing     Listing  @relation(fields: [listingId], references: [id])
+  listingId   String
+  originalUrl String
+  thumbUrl    String?
+  mediumUrl   String?
+  largeUrl    String?
+  position    Int      @default(0)
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now())
+
+  @@index([listingId])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, listingId])
+}
+
+// ---------- Messagerie ----------
+
+model Conversation {
+  id        String    @id @default(uuid())
+  listing   Listing   @relation(fields: [listingId], references: [id])
+  listingId String
+  buyer     User      @relation("ConversationBuyer", fields: [buyerId], references: [id])
+  buyerId   String
+  seller    User      @relation("ConversationSeller", fields: [sellerId], references: [id])
+  sellerId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  @@unique([listingId, buyerId])
+  @@index([sellerId])
+  @@index([buyerId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+  sender         User         @relation(fields: [senderId], references: [id])
+  senderId       String
+  type           MessageType  @default(TEXT)
+  content        String?
+  offerAmountXaf Int?
+  offerStatus    OfferStatus?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+// ---------- Commandes & séquestre ----------
+
+model Order {
+  id       String  @id @default(uuid())
+  listing  Listing @relation(fields: [listingId], references: [id])
+  listingId String
+  buyer    User    @relation("OrderBuyer", fields: [buyerId], references: [id])
+  buyerId  String
+  seller   User    @relation("OrderSeller", fields: [sellerId], references: [id])
+  sellerId String
+
+  priceXaf       Int
+  deliveryFeeXaf Int @default(0)
+  commissionXaf  Int
+  totalXaf       Int
+
+  deliveryMethod      DeliveryMethod
+  recipientName       String
+  recipientPhone      String
+  deliveryAddressText String?
+  trackingNumber      String?
+
+  status        OrderStatus @default(CREATED)
+  autoReleaseAt DateTime?
+
+  paidAt      DateTime?
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  releasedAt  DateTime?
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  statusHistory OrderStatusHistory[]
+  payments      Payment[]
+  ledgerEntries LedgerEntry[]
+  review        Review[]
+  dispute       Dispute?
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+model OrderStatusHistory {
+  id         String      @id @default(uuid())
+  order      Order       @relation(fields: [orderId], references: [id])
+  orderId    String
+  fromStatus OrderStatus
+  toStatus   OrderStatus
+  actor      User?       @relation(fields: [actorId], references: [id])
+  actorId    String?
+  reason     String?
+  createdAt  DateTime    @default(now())
+
+  @@index([orderId, createdAt])
+}
+
+// ---------- Paiements ----------
+
+model Payment {
+  id             String              @id @default(uuid())
+  order          Order               @relation(fields: [orderId], references: [id])
+  orderId        String
+  provider       PaymentProviderName
+  providerRef    String?             @unique
+  amountXaf      Int
+  status         PaymentStatus       @default(PENDING)
+  idempotencyKey String              @unique
+  rawPayload     Json?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  @@index([orderId])
+}
+
+model WebhookEvent {
+  id          String              @id @default(uuid())
+  provider    PaymentProviderName
+  eventId     String
+  payload     Json
+  processedAt DateTime?
+  createdAt   DateTime            @default(now())
+
+  @@unique([provider, eventId])
+}
+
+model LedgerEntry {
+  id          String          @id @default(uuid())
+  order       Order           @relation(fields: [orderId], references: [id])
+  orderId     String
+  type        LedgerEntryType
+  amountXaf   Int
+  description String?
+  createdAt   DateTime        @default(now())
+
+  @@index([orderId])
+}
+
+// ---------- Avis ----------
+
+model Review {
+  id        String   @id @default(uuid())
+  order     Order    @relation(fields: [orderId], references: [id])
+  orderId   String
+  author    User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  authorId  String
+  target    User     @relation("ReviewTarget", fields: [targetId], references: [id])
+  targetId  String
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@unique([orderId, authorId])
+  @@index([targetId])
+}
+
+// ---------- Litiges ----------
+
+model Dispute {
+  id             String        @id @default(uuid())
+  order          Order         @relation(fields: [orderId], references: [id])
+  orderId        String        @unique
+  openedBy       User          @relation("DisputeOpenedBy", fields: [openedById], references: [id])
+  openedById     String
+  reason         String
+  description    String
+  photoUrls      String[]
+  status         DisputeStatus @default(OPEN)
+  resolvedBy     User?         @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+  resolvedById   String?
+  resolutionNote String?
+  resolvedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  messages DisputeMessage[]
+}
+
+model DisputeMessage {
+  id        String   @id @default(uuid())
+  dispute   Dispute  @relation(fields: [disputeId], references: [id])
+  disputeId String
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  String
+  content   String
+  photoUrls String[]
+  createdAt DateTime @default(now())
+
+  @@index([disputeId, createdAt])
+}
+
+// ---------- Signalements ----------
+
+model Report {
+  id           String       @id @default(uuid())
+  reporter     User         @relation("ReportReporter", fields: [reporterId], references: [id])
+  reporterId   String
+  listing      Listing?     @relation(fields: [listingId], references: [id])
+  listingId    String?
+  reason       ReportReason
+  description  String?
+  status       ReportStatus @default(OPEN)
+  resolvedBy   User?        @relation("ReportResolvedBy", fields: [resolvedById], references: [id])
+  resolvedById String?
+  resolvedAt   DateTime?
+  createdAt    DateTime     @default(now())
+}
+
+// ---------- Notifications ----------
+
+model Notification {
+  id        String              @id @default(uuid())
+  user      User                @relation(fields: [userId], references: [id])
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  @@index([userId, readAt])
+}
+
+// ---------- Admin / config ----------
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}

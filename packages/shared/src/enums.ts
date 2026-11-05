@@ -1,0 +1,129 @@
+// Enums partagés entre apps/api (Prisma) et apps/web.
+// Doivent rester synchronisés avec apps/api/prisma/schema.prisma.
+
+export enum Role {
+  USER = "USER",
+  ADMIN = "ADMIN",
+}
+
+export enum VerificationStatus {
+  NONE = "NONE",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}
+
+export enum ListingStatus {
+  DRAFT = "DRAFT",
+  PUBLISHED = "PUBLISHED",
+  RESERVED = "RESERVED",
+  SOLD = "SOLD",
+  HIDDEN = "HIDDEN",
+}
+
+export enum ListingCondition {
+  NEW = "NEW",
+  VERY_GOOD = "VERY_GOOD",
+  GOOD = "GOOD",
+  FAIR = "FAIR",
+}
+
+export enum MessageType {
+  TEXT = "TEXT",
+  OFFER = "OFFER",
+  SYSTEM = "SYSTEM",
+}
+
+export enum OfferStatus {
+  PENDING = "PENDING",
+  ACCEPTED = "ACCEPTED",
+  REJECTED = "REJECTED",
+}
+
+export enum OrderStatus {
+  CREATED = "CREATED",
+  PAID_HELD = "PAID_HELD",
+  SHIPPED = "SHIPPED",
+  DELIVERED = "DELIVERED",
+  RELEASED = "RELEASED",
+  CANCELLED = "CANCELLED",
+  DISPUTED = "DISPUTED",
+  REFUNDED = "REFUNDED",
+}
+
+export enum DeliveryMethod {
+  HAND_DELIVERY = "HAND_DELIVERY",
+  LOCAL_COURIER = "LOCAL_COURIER",
+  TRAVEL_AGENCY = "TRAVEL_AGENCY",
+}
+
+export enum PaymentProviderName {
+  MOCK = "MOCK",
+  MTN_MOMO = "MTN_MOMO",
+  ORANGE_MONEY = "ORANGE_MONEY",
+}
+
+export enum PaymentStatus {
+  PENDING = "PENDING",
+  SUCCEEDED = "SUCCEEDED",
+  FAILED = "FAILED",
+  REFUNDED = "REFUNDED",
+}
+
+export enum LedgerEntryType {
+  CAPTURE = "CAPTURE",
+  HOLD = "HOLD",
+  COMMISSION = "COMMISSION",
+  PAYOUT = "PAYOUT",
+  REFUND = "REFUND",
+}
+
+export enum DisputeStatus {
+  OPEN = "OPEN",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  RESOLVED_REFUND = "RESOLVED_REFUND",
+  RESOLVED_RELEASE = "RESOLVED_RELEASE",
+  CLOSED = "CLOSED",
+}
+
+export enum ReportReason {
+  FRAUD = "FRAUD",
+  COUNTERFEIT = "COUNTERFEIT",
+  INAPPROPRIATE = "INAPPROPRIATE",
+  SPAM = "SPAM",
+  OTHER = "OTHER",
+}
+
+export enum ReportStatus {
+  OPEN = "OPEN",
+  REVIEWED = "REVIEWED",
+  DISMISSED = "DISMISSED",
+  ACTIONED = "ACTIONED",
+}
+
+export enum NotificationType {
+  OTP_CODE = "OTP_CODE",
+  NEW_MESSAGE = "NEW_MESSAGE",
+  NEW_OFFER = "NEW_OFFER",
+  OFFER_ACCEPTED = "OFFER_ACCEPTED",
+  OFFER_REJECTED = "OFFER_REJECTED",
+  ORDER_CREATED = "ORDER_CREATED",
+  ORDER_PAID = "ORDER_PAID",
+  ORDER_SHIPPED = "ORDER_SHIPPED",
+  ORDER_DELIVERED = "ORDER_DELIVERED",
+  ORDER_AUTO_RELEASE_SOON = "ORDER_AUTO_RELEASE_SOON",
+  ORDER_RELEASED = "ORDER_RELEASED",
+  ORDER_CANCELLED = "ORDER_CANCELLED",
+  DISPUTE_OPENED = "DISPUTE_OPENED",
+  DISPUTE_RESOLVED = "DISPUTE_RESOLVED",
+  REVIEW_RECEIVED = "REVIEW_RECEIVED",
+  SELLER_VERIFICATION_RESULT = "SELLER_VERIFICATION_RESULT",
+  LISTING_MODERATED = "LISTING_MODERATED",
+}
+
+export enum NotificationChannel {
+  IN_APP = "IN_APP",
+  EMAIL = "EMAIL",
+  SMS = "SMS",
+  WHATSAPP = "WHATSAPP",
+}

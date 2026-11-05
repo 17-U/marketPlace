@@ -1,0 +1,56 @@
+# Fragment conf.d: les variables ${API_DOMAIN}/${WEB_DOMAIN} sont substituées
+# par l'entrypoint officiel de l'image nginx (envsubst) à partir des
+# variables d'environnement du conteneur. Routage par sous-domaine plutôt
+# que par préfixe de chemin: évite tout conflit entre le chemin par défaut
+# de Socket.IO (/socket.io/) et un préfixe /api/.
+
+# Cloudflare transmet l'IP réelle du visiteur dans ce header.
+real_ip_header CF-Connecting-IP;
+
+gzip on;
+gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+gzip_min_length 1024;
+
+client_max_body_size 10m;
+
+upstream web_upstream {
+  server web:3000;
+}
+
+upstream api_upstream {
+  server api:4000;
+}
+
+# --- API (REST + webhooks + Socket.IO) ---
+server {
+  listen 80;
+  server_name ${API_DOMAIN};
+
+  location / {
+    proxy_pass http://api_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}
+
+# --- Front Next.js (SSR + assets) ---
+server {
+  listen 80;
+  server_name ${WEB_DOMAIN};
+
+  location / {
+    proxy_pass http://web_upstream;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+  }
+}

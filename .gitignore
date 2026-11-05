@@ -1,0 +1,24 @@
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+.env
+.env.local
+.env.*.local
+.turbo/
+.DS_Store
+Thumbs.db
+apps/api/generated/
+minio-data/
+postgres-data/
+redis-data/
+
+# Filet de sécurité: packages/shared/src ne doit contenir que des .ts (voir
+# "Pièges connus" dans CLAUDE.md — un tsc mal ciblé peut y écrire du JS compilé).
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
