@@ -2,6 +2,7 @@
 
 FROM node:20-alpine AS base
 WORKDIR /app
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 FROM base AS dev
@@ -30,6 +31,7 @@ RUN pnpm prisma:generate && pnpm build
 
 FROM node:20-alpine AS prod
 WORKDIR /app
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api ./apps/api

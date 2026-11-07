@@ -253,3 +253,16 @@ Mettre à jour cette section (et ce fichier en général) à la fin de chaque ph
   chemin fixe (`/socket.io/`) indépendant du préfixe d'URL de connexion, donc un reverse proxy
   qui stripperait un préfixe `/api/` casserait silencieusement le WebSocket en production.
   `API_DOMAIN`/`WEB_DOMAIN` (routage par `server_name`) évite complètement le problème.
+- **Prisma sur `node:20-alpine` : déclarer `binaryTargets` explicitement et installer `openssl`** —
+  sans ça, l'API crash au démarrage en prod (`PrismaClientInitializationError: ... Error loading
+  shared library libssl.so.1.1: No such file or directory`). Cause: Alpine récent embarque
+  OpenSSL 3.x, mais `prisma generate` ne peut pas détecter la version d'OpenSSL présente sans
+  le paquet `openssl` installé et se rabat silencieusement sur l'ancien moteur `linux-musl`
+  (compilé pour OpenSSL 1.1.x) — ce défaut passe inaperçu au `docker build` (juste un warning
+  "failed to detect the libssl/openssl version") et ne plante qu'au démarrage du conteneur.
+  Fix: `generator client { binaryTargets = ["native", "linux-musl-openssl-3.0.x"] }` dans
+  `apps/api/prisma/schema.prisma`, et `RUN apk add --no-cache openssl` dans `apps/api/Dockerfile`
+  (stages `base` et `prod`, car `prod` repart d'une image Alpine fraîche). Toujours vérifier un
+  déploiement prod par un vrai `docker compose up` suivi d'un coup d'œil aux logs du conteneur
+  `api`, pas seulement par un `build` réussi — un build sans erreur ne garantit pas un démarrage
+  sans erreur.
