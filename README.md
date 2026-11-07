@@ -127,7 +127,7 @@ docker compose -f docker-compose.prod.yml -f docker-compose.prod.override.yml up
 ```
 
 Cet override désactive le conteneur `nginx` (profil `bundled-nginx`, jamais démarré par
-défaut) et publie l'API/le Web uniquement sur `127.0.0.1:4010`/`127.0.0.1:4011` — jamais
+défaut) et publie l'API/le Web uniquement sur `127.0.0.1:4020`/`127.0.0.1:4021` — jamais
 exposés publiquement par Docker. C'est le Nginx de l'hôte qui fait le reverse-proxy, comme
 pour les autres projets déjà en place. Ajouter un fichier dans
 `/etc/nginx/sites-available/` (puis le lier dans `sites-enabled/`) :
@@ -138,7 +138,7 @@ server {
     server_name marketplace-web.VOTRE-IP.sslip.io;
 
     location / {
-        proxy_pass http://127.0.0.1:4011;
+        proxy_pass http://127.0.0.1:4021;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -152,7 +152,7 @@ server {
     server_name marketplace-api.VOTRE-IP.sslip.io;
 
     location / {
-        proxy_pass http://127.0.0.1:4010;
+        proxy_pass http://127.0.0.1:4020;
         proxy_http_version 1.1;
         # Upgrade/Connection: indispensable pour Socket.IO (chemin fixe /socket.io/).
         proxy_set_header Upgrade $http_upgrade;
