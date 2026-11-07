@@ -266,3 +266,10 @@ Mettre à jour cette section (et ce fichier en général) à la fin de chaque ph
   déploiement prod par un vrai `docker compose up` suivi d'un coup d'œil aux logs du conteneur
   `api`, pas seulement par un `build` réussi — un build sans erreur ne garantit pas un démarrage
   sans erreur.
+- **`tsconfig.base.json` doit aussi être copié dans l'étage `prod` du Dockerfile API**, pas
+  seulement au niveau du contexte de build (`builder`) : `pnpm prisma:seed` tourne via `ts-node`
+  en production (`node dist/main.js` ne l'utilise pas, mais la commande de seed si) et échoue
+  avec `TS5083: Cannot read file '/app/tsconfig.base.json'` sans lui, car l'étage `prod` repart
+  d'une image Alpine fraîche et ne copie que `node_modules`/`apps/api`/`packages/shared` depuis
+  `builder`. Même leçon répétée: toute commande qui invoque `tsc`/`ts-node` à l'exécution (pas
+  seulement au build) a besoin de ce fichier dans l'image finale.
